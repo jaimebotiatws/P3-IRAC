@@ -47,7 +47,7 @@
             const protData = {
                 "org.w3.clearkey": {
                     "clearkeys": {
-                     "oW5AK5BW43HzbTSKpiu3SQ": "hyN9IKGfWKdAwFaE5pm0qg"
+                     "oW5AK5BW43HzbTSKpiu3SQ": "hyN9IKGfWKdAwFaE5pm0qg" //Asociamos el KID a la KEY con la que hemos cifrado
                     }
                 }
             };
@@ -58,7 +58,7 @@
             mpd_url = "./output/stream.mpd";
             video = document.querySelector("video");
             player = dashjs.MediaPlayer().create();
-            player.setProtectionData(protData);
+            player.setProtectionData(protData); 
             player.initialize(video, mpd_url, true);
             player.on(dashjs.MediaPlayer.events["PLAYBACK_ENDED"], function() {
             clearInterval(eventPoller);
@@ -85,7 +85,8 @@
                 var droppedFPS;
 
                 var color = Chart.helpers.color;
-                var config = {
+            //Configuración de la primera gráfica
+                var config = {     
                     type: 'line',
                     data: {
                         datasets: [{
@@ -149,7 +150,7 @@
                         }
                     }
                 };
-
+            //Configuracion de la segunda gráfica
                 var config2 = {
                     type: 'line',
                     data: {
@@ -216,7 +217,7 @@
                     }
                 };
 
-
+         //Creamos los charts con sus respectivas configuraciones
                 window.onload = function() {
                     var ctx = document.getElementById('myChart').getContext('2d');
                     var ctx2 = document.getElementById('myChart2').getContext('2d');
@@ -227,7 +228,7 @@
                 
 
                 var colorNames = Object.keys(chartColors);
-
+             //Funciones de refresco de ambas gráficas
                 function onRefresh(chart) {
                     chart.config.data.datasets[0].data.push({
                             x: Date.now(),
@@ -265,6 +266,7 @@
                     bitrate = repSwitch ? Math.round(dashAdapter.
                     getBandwidthForRepresentation(repSwitch.to,
                     periodIdx) / 1000) : NaN;
+                    //Frame rate y Dropped frames
                     adaptation = dashAdapter.getAdaptationForType(periodIdx, 'video', streamInfo)
                     frameRate = adaptation.Representation_asArray.find(function (rep) {
                         return rep.id === repSwitch.to}).frameRate;
