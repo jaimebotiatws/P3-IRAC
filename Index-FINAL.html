@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+
+<html>
+    <head> 
+        <script src="https://reference.dashif.org/dash.js/latest/dist/dash.all.debug.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/moment@2.24.0/min/moment.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/chart.js@2.8.0"></script>
+        <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-streaming@1.8.0"></script>
+        <meta charset="UTF-8">
+        <title>
+            IRAC-P3-Eq35
+        </title>
+        <style>
+            video {
+                width: 700px;
+                height: 560px;
+            }
+        </style>
+    </head>
+    <h1> IRAC-P3-Eq35 </h1>
+    <body>
+        <div class="code">
+            <video class="dashjs-player" autoplay controls preload="auto" muted>
+            </video>
+        </div>
+
+        <div class="code">
+            <p>Video Bitrate: <span id="bitrate"></span></p>
+            <p>Video Buffer: <span id="buffer"></span></p>
+            <p>Video Representation: <span id="representation"></span></p>
+        </div>
+        
+        <div style="height: 490px; width: 780px">
+            <canvas id="myChart"></canvas>
+        </div>
+        <div style="height: 490px; width: 780px">
+            <canvas id="myChart2"></canvas>
+        </div>
+        
+    </body>
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+        init();
+        });
+
+        function init(){
+            const protData = {
+                "org.w3.clearkey": {
+                    "clearkeys": {
+                     "oW5AK5BW43HzbTSKpiu3SQ": "hyN9IKGfWKdAwFaE5pm0qg"
+                    }
+                }
+            };
+        
+
+            var video,
+            player,
+            mpd_url = "./output/stream.mpd";
+            video = document.querySelector("video");
+            player = dashjs.MediaPlayer().create();
+            player.setProtectionData(protData);
+            player.initialize(video, mpd_url, true);
+            player.on(dashjs.MediaPlayer.events["PLAYBACK_ENDED"], function() {
+            clearInterval(eventPoller);
+            });
+
+            var chartColors = {
+                    red: 'rgb(255, 99, 132)',
+                    orange: 'rgb(255, 159, 64)',
+                    yellow: 'rgb(255, 205, 86)',
+                    green: 'rgb(75, 192, 192)',
+                    blue: 'rgb(54, 162, 235)',
+                    purple: 'rgb(153, 102, 255)',
+                    grey: 'rgb(201, 203, 207)'
+                };
+
+            
+
+                var repSwitch;
+                var bufferLevel;
+                var bitrate;
+                var frameRate;
+                var adaptation;
+                var droppedFramesMetrics;
+                var droppedFPS;
+
+                var color = Chart.helpers.color;
+                var config = {
+                    type: 'line',
+                    data: {
+                        datasets: [{
+                            label: 'Buffer Level',
+                            backgroundColor: color(chartColors.red).alpha(0.5).rgbString(),
+                            borderColor: chartColors.red,
+                            fill: false,
+                            yAxisID: 'buffer',
+                            lineTension: 0,
+                            borderDash: [8, 4],
+                            data: []
+                        }, {
+                            label: 'Bitrate',
+                            backgroundColor: color(chartColors.blue).alpha(0.5).rgbString(),
+                            borderColor: chartColors.blue,
+                            fill: false,
+                            yAxisID: 'bitrate',
+                            cubicInterpolationMode: 'monotone',
+                            data: []
+                        }]
+                    },
+                    options: {
+                        title: {
+                            display: true,
+                            text: 'Bit rate y nivel de buffer.'
+                        },
+                        scales: {
+                            xAxes: [{
+                                type: 'realtime',
+                                realtime: {
+                                    duration: 20000,
+                                    refresh: 500,
+                                    delay: 2000,
+                                    onRefresh: onRefresh
+                                }
+                            }],
+                            yAxes: [{
+                                id: 'buffer',
+                                position: 'left',
+                                scaleLabel: {
+                                    display: true,
+                                    labelString: 'Buffer Level in seconds'
+                                }
+                            },{
+                                id: 'bitrate',
+                                position: 'right',
+                                scaleLabel: {
+                                    display: true,
+                                    labelString: 'Bitrate in Kbps'
+                                },
+                            }
+                        ]
+                        },
+                        tooltips: {
+                            mode: 'nearest',
+                            intersect: false
+                        },
+                        hover: {
+                            mode: 'nearest',
+                            intersect: false
+                        }
+                    }
+                };
+
+                var config2 = {
+                    type: 'line',
+                    data: {
+                        datasets: [{
+                            label: 'Frame rate',
+                            backgroundColor: color(chartColors.red).alpha(0.5).rgbString(),
+                            borderColor: chartColors.red,
+                            fill: false,
+                            yAxisID: 'FramesR',
+                            lineTension: 0,
+                            borderDash: [8, 4],
+                            data: []
+                        },{
+                            label: 'Frames Dropped',
+                            backgroundColor: color(chartColors.blue).alpha(0.5).rgbString(),
+                            borderColor: chartColors.blue,
+                            fill: false,
+                            yAxisID: 'FramesD',
+                            cubicInterpolationMode: 'monotone',
+                            data: []
+                        }]
+                    },
+                    options: {
+                        title: {
+                            display: true,
+                            text: 'Frame rate y frames perdidos.'
+                        },
+                        scales: {
+                            xAxes: [{
+                                type: 'realtime',
+                                realtime: {
+                                    duration: 20000,
+                                    refresh: 500,
+                                    delay: 2000,
+                                    onRefresh: onRefresh2
+                                }
+                            }],
+                            yAxes: [{
+                                id: 'FramesR',
+                                position: 'left',
+                                scaleLabel: {
+                                    display: true,
+                                    labelString: 'Framerate (frames/s)'
+                                }
+                            },
+                            {
+                                id: 'FramesD',
+                                position: 'right',
+                                scaleLabel: {
+                                    display: true,
+                                    labelString: 'Frames perdidos desde el comienzo de la reproducción'
+                                }
+                            }
+                        ]
+                        },
+                        tooltips: {
+                            mode: 'nearest',
+                            intersect: false
+                        },
+                        hover: {
+                            mode: 'nearest',
+                            intersect: false
+                        }
+                    }
+                };
+
+
+                window.onload = function() {
+                    var ctx = document.getElementById('myChart').getContext('2d');
+                    var ctx2 = document.getElementById('myChart2').getContext('2d');
+                    window.myChart = new Chart(ctx, config);
+                    window.myChart2 = new Chart(ctx2, config2);
+                };
+
+                
+
+                var colorNames = Object.keys(chartColors);
+
+                function onRefresh(chart) {
+                    chart.config.data.datasets[0].data.push({
+                            x: Date.now(),
+                            y: bufferLevel
+                        });
+                    chart.config.data.datasets[1].data.push({
+                            x: Date.now(),
+                            y: bitrate
+                        });
+                    }
+                
+                function onRefresh2(chart) {
+                    chart.config.data.datasets[0].data.push({
+                            x: Date.now(),
+                            y: frameRate
+                        });
+                    chart.config.data.datasets[1].data.push({
+                            x: Date.now(),
+                            y: droppedFPS
+                        });
+                   
+                    }
+
+            
+
+            var eventPoller = setInterval(function() {
+                var streamInfo = player.getActiveStream().getStreamInfo();
+                var dashMetrics = player.getDashMetrics();
+                var dashAdapter = player.getDashAdapter();
+
+                if (dashMetrics && streamInfo) {
+                    const periodIdx = streamInfo.index;
+                    repSwitch = dashMetrics.getCurrentRepresentationSwitch('video', true);
+                    bufferLevel = dashMetrics.getCurrentBufferLevel('video', true);
+                    bitrate = repSwitch ? Math.round(dashAdapter.
+                    getBandwidthForRepresentation(repSwitch.to,
+                    periodIdx) / 1000) : NaN;
+                    adaptation = dashAdapter.getAdaptationForType(periodIdx, 'video', streamInfo)
+                    frameRate = adaptation.Representation_asArray.find(function (rep) {
+                        return rep.id === repSwitch.to}).frameRate;
+
+                    droppedFramesMetrics = dashMetrics.getCurrentDroppedFrames();
+                    droppedFPS = droppedFramesMetrics ? droppedFramesMetrics.droppedFrames : 0;
+                    
+                    document.getElementById('buffer').innerText = bufferLevel + " secs";
+                    document.getElementById('bitrate').innerText = bitrate + " Kbps";
+                    document.getElementById('representation').innerText = repSwitch.to;
+
+                
+                }
+                    
+
+                    
+                    
+ 
+                }, 1000);
+        }           
+        
+
+       
+
+       
+
+    </script>
+
+</html>
